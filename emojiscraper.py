@@ -50,6 +50,9 @@ def get_image_file_extension_from_bytes(image_bytes):
         return ".gif"
     return ".png"
 
+def sanitize_filename(filename):
+    return re.sub(r'[<>:"/\\|?*]', '_', filename)
+
 def save(img_bytes, path):
     imagefile = open(path, 'wb')
     imagefile.write(img_bytes)
@@ -60,9 +63,12 @@ def make_server_dir(server, config):
     if not os.path.isdir(dir_path):
         os.mkdir(dir_path)
 
-def try_scraping(guild_name, emoji):
+def try_scraping(guild_name, emoji, emoji_name):
     id = emoji.get("id")
     name = emoji.get("name")
+    if (name != emoji_name):
+        print("Emoji name contains invalid characters. They will be replaced by '_'")
+    print(f"Attempting to download '{name}' from {guild_name}")
     print(f"Attempting to download :{name}: from {guild_name}")
     emoji_bytes = None
     while True:
@@ -106,8 +112,9 @@ def scrape(config):
                 time.sleep(cooldownsec)
                 count = 0
                 print("Continuing from cooldown\n")
-            emoji_bytes = try_scraping(guild_name, emoji)
-            save(emoji_bytes, os.path.join(config.get("path"), guild_name, (emoji.get("name") + get_image_file_extension_from_bytes(emoji_bytes))))
+            emoji_name = sanitize_filename(emoji.get("name"))
+            emoji_bytes = try_scraping(guild_name, emoji, emoji_name)
+            save(emoji_bytes, os.path.join(config.get("path"), guild_name, (emoji_name) + get_image_file_extension_from_bytes(emoji_bytes)))
             count += 1
         print(f"Finished downloading emojis from {guild_name}")
 

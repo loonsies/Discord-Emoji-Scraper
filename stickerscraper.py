@@ -44,6 +44,9 @@ def get_guild_name(guild_id, token):
     else:
         return result.json().get("name")  
 
+def sanitize_filename(filename):
+    return re.sub(r'[<>:"/\\|?*]', '_', filename)
+
 def save(img_bytes, path):
     imagefile = open(path, 'wb')
     imagefile.write(img_bytes)
@@ -61,9 +64,11 @@ def is_int(str):
     except ValueError:
         return False
 
-def try_scraping(guild_name, sticker):
+def try_scraping(guild_name, sticker, sticker_name):
     id = sticker.get("id")
     name = sticker.get("name")
+    if (name != sticker_name):
+        print("Sticker name contains invalid characters. They will be replaced by '_'")
     print(f"Attempting to download '{name}' from {guild_name}")
     sticker_bytes = None
     while True:
@@ -100,19 +105,20 @@ def scrape(config):
                 time.sleep(cooldownsec)
                 count = 0
                 print("Continuing from cooldown\n")
-            sticker_bytes = try_scraping(guild_name, sticker)
+            sticker_name = sanitize_filename(sticker.get("name"))
+            sticker_bytes = try_scraping(guild_name, sticker, sticker_name)
             if sticker.get("format_type") == 1:
-                save(sticker_bytes, os.path.join(config.get("path"), guild_name, (sticker.get("name") + ".png")))
+                save(sticker_bytes, os.path.join(config.get("path"), guild_name, (sticker_name + ".png")))
             else:
                 if config.get("convertapngtogif"):
-                    pathorigin = os.path.join(config.get("path"), guild_name, (sticker.get("name") + "_original.apng"))
-                    pathconv = os.path.join(config.get("path"), guild_name, (sticker.get("name") + ".gif"))
-                    stickername = sticker.get("name")
+                    pathorigin = os.path.join(config.get("path"), guild_name, (sticker_name + "_original.apng"))
+                    pathconv = os.path.join(config.get("path"), guild_name, (sticker_name + ".gif"))
+                    stickername = sticker_name
                     save(sticker_bytes, pathorigin)
                     apnggif(pathorigin, pathconv)
                     print(f"Converted animated sticker '{stickername} from {guild_name}'")
                 else:
-                    save(sticker_bytes, os.path.join(config.get("path"), guild_name, (sticker.get("name") + ".apng")))
+                    save(sticker_bytes, os.path.join(config.get("path"), guild_name, (sticker_name + ".apng")))
             count += 1
         print(f"Finished downloading stickers from {guild_name}")
 
